@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight, ChevronLeft, Sparkles, CarFront } from 'lucide-react';
 import { Car } from '@/lib/car-data';
-import { GoogleGenAI } from '@google/genai';
+import { generateCarRecommendation } from '@/lib/ai';
 import ReactMarkdown from 'react-markdown';
 
 interface Props {
@@ -35,51 +35,8 @@ export function FindMyCarModal({ isOpen, onClose, allCars }: Props) {
     setStep(5); // Move to analyzing/result step
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
-      
-      const prompt = `
-        You are an expert car matchmaker. Based on the user's profile, recommend the SINGLE BEST car and specific variant from the provided database.
-        
-        User Profile:
-        - Budget: ${answers.budget}
-        - Primary Purpose: ${answers.purpose}
-        - Daily Commute: ${answers.commute}
-        - Fuel Preference: ${answers.fuel}
-        - Planned Ownership Duration: ${answers.longevity}
-        - Safety Priority: ${answers.safety}
-        - Preferred Brand: ${answers.brand}
-        
-        Available Cars in Database:
-        ${JSON.stringify(allCars, null, 2)}
-        
-        Instructions:
-        1. Analyze the user's needs against the available cars and their specific variants.
-        2. Select the ONE best matching variant.
-        3. Format the response STRICTLY as follows:
-           # [Make] [Model] - [Variant Name]
-           
-           **Why this is your perfect match:**
-           [2-3 paragraphs explaining the fit based on their specific answers]
-
-           **Key Details:**
-           - **Price:** [Price]
-           - **Fuel Type:** [Fuel]
-           - **Safety Rating:** [Rating]
-
-           **Technical Specifications:**
-           - **Engine:** [Engine]
-           - **Horsepower:** [HP]
-           - **Mileage:** [Mileage]
-           - **Key Features:** [Features list]
-      `;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: { temperature: 0.4 }
-      });
-
-      setRecommendation(response.text || 'Sorry, I could not generate a recommendation at this time.');
+      const recommendationText = await generateCarRecommendation(answers, allCars);
+      setRecommendation(recommendationText || 'Sorry, I could not generate a recommendation at this time.');
     } catch (error) {
       console.error('AI Error:', error);
       setRecommendation('Sorry, an error occurred while analyzing your profile. Please try again.');

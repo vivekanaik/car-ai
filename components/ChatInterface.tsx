@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Car } from '@/lib/car-data';
-import { GoogleGenAI } from '@google/genai';
+import { generateChatResponseStream } from '@/lib/ai';
 import { Send, User, CarFront, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -71,50 +71,7 @@ export function ChatInterface({ contextCars, allCars }: Props) {
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
-      
-      const systemInstruction = `
-        You are an expert car comparison assistant. 
-        You MUST ONLY use the following structured car data to answer questions.
-        DO NOT hallucinate or invent specifications. If the data is not provided, say "I don't have that information."
-        
-        Currently Selected Cars for Comparison Context:
-        ${JSON.stringify(contextCars, null, 2)}
-        
-        All Available Cars in Database:
-        ${JSON.stringify(allCars, null, 2)}
-        
-        CRITICAL FORMATTING RULES:
-        1. When a user asks for a COMPARISON between two or more cars, you MUST use a Markdown table.
-           Example Table Format:
-           | Feature | Car A | Car B |
-           |---|---|---|
-           | Price | $20,000 | $22,000 |
-           | Mileage | 30 mpg | 28 mpg |
-        2. When a user asks for SPECIFICATIONS of a single car, use a clean bulleted list with bold labels.
-           Example:
-           - **Make & Model:** Toyota Camry
-           - **Price:** $26,420
-           - **Engine:** 2.5L 4-cylinder
-        3. Keep answers concise, professional, and directly address the user's question.
-      `;
-
-      const contents = [
-        ...messages.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        })),
-        { role: 'user', parts: [{ text: userMsg }] }
-      ];
-
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
-        contents,
-        config: {
-          systemInstruction,
-          temperature: 0.2, // Low temperature to prevent hallucination
-        }
-      });
+      const responseStream = await generateChatResponseStream(messages, userMsg, contextCars, allCars);
       
       const assistantMsgId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }]);
